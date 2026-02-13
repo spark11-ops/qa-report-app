@@ -6,13 +6,19 @@ from docx.shared import Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-import subprocess
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "outputs"
-ASSET_FOLDER = "assets"
+# ===== Render persistent storage =====
+BASE_DIR = "/data"
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
+ASSET_FOLDER = os.path.join(BASE_DIR, "assets")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -61,19 +67,6 @@ def format_fieldsize_mm_to_cm(field_text):
     except:
         return field_text
 
-def convert_docx_to_pdf(docx_path):
-    output_dir = os.path.dirname(docx_path)
-
-    subprocess.run([
-        "libreoffice",
-        "--headless",
-        "--convert-to", "pdf",
-        docx_path,
-        "--outdir", output_dir
-    ], check=True)
-
-    return docx_path.replace(".docx", ".pdf")
-
 # =========================
 # QCW PARSER
 # =========================
@@ -85,10 +78,8 @@ def parse_qcw(file_path):
     machines = {}
 
     for trend in root.findall(".//TrendData"):
-
         raw_machine = trend.find(".//Worklist/Name").text
         machine = normalize_machine(raw_machine)
-
         date = trend.get("date").split(" ")[0]
 
         energy = trend.find(".//AdminValues/Energy").text
@@ -142,109 +133,25 @@ def parse_qcw(file_path):
     return machines
 
 # =========================
-# REMOVE BORDERS (HEADER ROW)
-# =========================
-
-def remove_table_borders(table):
-    tbl = table._tbl
-    tblPr = tbl.tblPr
-
-    borders = OxmlElement('w:tblBorders')
-
-    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
-        element = OxmlElement(f'w:{edge}')
-        element.set(qn('w:val'), 'nil')
-        borders.append(element)
-
-    tblPr.append(borders)
-
-    for row in table.rows:
-        for cell in row.cells:
-            tc = cell._tc
-            tcPr = tc.get_or_add_tcPr()
-
-            tcBorders = OxmlElement('w:tcBorders')
-            for edge in ('top', 'left', 'bottom', 'right'):
-                e = OxmlElement(f'w:{edge}')
-                e.set(qn('w:val'), 'nil')
-                tcBorders.append(e)
-
-            tcPr.append(tcBorders)
-
-# =========================
-# QA TABLE STYLE
-# =========================
-
-def style_table(table):
-    table.style = "Table Grid"
-
-# =========================
-# HEADER + FOOTER
-# =========================
-
-def add_header_footer(doc):
-    section = doc.sections[0]
-
-    header = section.header
-    p = header.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
-    logo_path = os.path.join(ASSET_FOLDER, "logo.png")
-    if os.path.exists(logo_path):
-        p.add_run().add_picture(logo_path, width=Inches(1.0))
-
-    footer = section.footer
-    p = footer.paragraphs[0]
-
-    p.add_run("\n" + "_" * 90 + "\n")
-
-    institute_name = "Your Institute"
-    name_file = os.path.join(ASSET_FOLDER, "name.txt")
-    if os.path.exists(name_file):
-        institute_name = open(name_file).read().strip()
-
-    p.add_run(institute_name)
-
-    if os.path.exists(logo_path):
-        p.add_run().add_picture(logo_path, width=Inches(0.6))
-
-# =========================
-# DOCX GENERATION (single)
+# DOCX GENERATION
 # =========================
 
 def generate_docx(machine, entry):
     doc = Document()
-    add_header_footer(doc)
 
-    title = doc.add_heading("Daily Quality Assurance", 0)
-    title.alignment = 1
+    doc.add_heading("Daily Quality Assurance", 0)
 
-    info_table = doc.add_table(rows=1, cols=2)
-    info_table.autofit = True
-    remove_table_borders(info_table)
-
-    left = info_table.rows[0].cells[0]
-    right = info_table.rows[0].cells[1]
-
-    left.text = f"Machine Name: {machine}"
-    right.text = f"Date: {entry['date']}"
-    right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
-    doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
-    doc.add_paragraph(f"Energy : {entry['energy']} MV")
-    doc.add_paragraph(f"Field Size : {entry['field']}")
+    doc.add_paragraph(f"Machine Name: {machine}")
+    doc.add_paragraph(f"Date: {entry['date']}")
+    doc.add_paragraph(f"Type of Radiation: {entry['modality']}")
+    doc.add_paragraph(f"Energy: {entry['energy']} MV")
+    doc.add_paragraph(f"Field Size: {entry['field']}")
 
     table = doc.add_table(rows=1, cols=6)
-    style_table(table)
-
     headers = ["Parameter", "Measured", "Target", "Tolerance", "Deviation", "Status"]
 
     for i, h in enumerate(headers):
-        cell = table.rows[0].cells[i]
-        cell.text = h
-        for p in cell.paragraphs:
-            for run in p.runs:
-                run.bold = True
+        table.rows[0].cells[i].text = h
 
     for row in entry["data"]:
         cells = table.add_row().cells
@@ -255,70 +162,55 @@ def generate_docx(machine, entry):
         cells[4].text = row["deviation"]
         cells[5].text = row["status"]
 
-    doc.add_paragraph("\nSignature:")
-
-    filename = f"{machine}_{entry['date']}_{entry['energy']}_{entry['field']}.docx"
+    filename = f"{machine}_{entry['date']}.docx"
     path = os.path.join(OUTPUT_FOLDER, filename)
     doc.save(path)
     return path
 
 # =========================
-# DOCX GENERATION (combined)
+# PDF GENERATION (REPORTLAB)
 # =========================
 
-def generate_combined_docx(machine, entries):
-    doc = Document()
-    add_header_footer(doc)
-
-    for i, entry in enumerate(entries):
-
-        title = doc.add_heading("Daily Quality Assurance", 0)
-        title.alignment = 1
-
-        info_table = doc.add_table(rows=1, cols=2)
-        info_table.autofit = True
-        remove_table_borders(info_table)
-
-        left = info_table.rows[0].cells[0]
-        right = info_table.rows[0].cells[1]
-
-        left.text = f"Machine Name: {machine}"
-        right.text = f"Date: {entry['date']}"
-        right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
-        doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
-        doc.add_paragraph(f"Energy : {entry['energy']} MV")
-        doc.add_paragraph(f"Field Size : {entry['field']}")
-
-        table = doc.add_table(rows=1, cols=6)
-        style_table(table)
-
-        headers = ["Parameter", "Measured", "Target", "Tolerance", "Deviation", "Status"]
-
-        for j, h in enumerate(headers):
-            cell = table.rows[0].cells[j]
-            cell.text = h
-            for p in cell.paragraphs:
-                for run in p.runs:
-                    run.bold = True
-
-        for row in entry["data"]:
-            cells = table.add_row().cells
-            cells[0].text = row["name"]
-            cells[1].text = row["value"]
-            cells[2].text = row["target"]
-            cells[3].text = row["tolerance"]
-            cells[4].text = row["deviation"]
-            cells[5].text = row["status"]
-
-        doc.add_paragraph("\nSignature:")
-
-        if i != len(entries) - 1:
-            doc.add_page_break()
-
-    filename = f"{machine}_ALL_QA.docx"
+def generate_pdf(machine, entry):
+    filename = f"{machine}_{entry['date']}.pdf"
     path = os.path.join(OUTPUT_FOLDER, filename)
-    doc.save(path)
+
+    styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(path, pagesize=A4)
+
+    elements = []
+
+    elements.append(Paragraph("Daily Quality Assurance", styles['Title']))
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph(f"Machine: {machine}", styles['Normal']))
+    elements.append(Paragraph(f"Date: {entry['date']}", styles['Normal']))
+    elements.append(Paragraph(f"Type of Radiation: {entry['modality']}", styles['Normal']))
+    elements.append(Paragraph(f"Energy: {entry['energy']} MV", styles['Normal']))
+    elements.append(Paragraph(f"Field Size: {entry['field']}", styles['Normal']))
+    elements.append(Spacer(1, 10))
+
+    data = [["Parameter", "Measured", "Target", "Tolerance", "Deviation", "Status"]]
+
+    for row in entry["data"]:
+        data.append([
+            row["name"],
+            row["value"],
+            row["target"],
+            row["tolerance"],
+            row["deviation"],
+            row["status"]
+        ])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 1, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+    ]))
+
+    elements.append(table)
+
+    doc.build(elements)
     return path
 
 # =========================
@@ -328,20 +220,9 @@ def generate_combined_docx(machine, entries):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-
         file = request.files.get("file")
-        if file:
-            file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-            file.save(file_path)
-
-        inst_name = request.form.get("institute")
-        if inst_name:
-            with open(os.path.join(ASSET_FOLDER, "name.txt"), "w") as f:
-                f.write(inst_name)
-
-        logo = request.files.get("logo")
-        if logo and logo.filename != "":
-            logo.save(os.path.join(ASSET_FOLDER, "logo.png"))
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(file_path)
 
         machines = parse_qcw(file_path)
         return render_template("result.html", machines=machines)
@@ -353,36 +234,30 @@ def index():
 def generate(machine, index, format):
     file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
     machines = parse_qcw(file_path)
-
     entry = machines[machine][index]
 
-    docx_path = generate_docx(machine, entry)
-
     if format == "docx":
-        return send_file(docx_path, as_attachment=True)
+        path = generate_docx(machine, entry)
+    else:
+        path = generate_pdf(machine, entry)
 
-    pdf_path = convert_docx_to_pdf(docx_path)
-    return send_file(pdf_path, as_attachment=True)
+    return send_file(path, as_attachment=True)
 
 
-@app.route("/generate_all/<machine>/docx")
-def generate_all_docx(machine):
+@app.route("/generate_all/<machine>/<format>")
+def generate_all(machine, format):
     file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
     machines = parse_qcw(file_path)
 
-    docx_path = generate_combined_docx(machine, machines[machine])
-    return send_file(docx_path, as_attachment=True)
+    paths = []
+    for entry in machines[machine]:
+        if format == "docx":
+            paths.append(generate_docx(machine, entry))
+        else:
+            paths.append(generate_pdf(machine, entry))
 
-
-@app.route("/generate_all/<machine>/pdf")
-def generate_all_pdf(machine):
-    file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
-    machines = parse_qcw(file_path)
-
-    docx_path = generate_combined_docx(machine, machines[machine])
-    pdf_path = convert_docx_to_pdf(docx_path)
-
-    return send_file(pdf_path, as_attachment=True)
+    # Return first file for now (simple version)
+    return send_file(paths[0], as_attachment=True)
 
 
 if __name__ == "__main__":
