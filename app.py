@@ -1,11 +1,15 @@
+# ==== PRO VERSION QA SYSTEM ====
+
 from flask import Flask, render_template, request, send_file
 import os
 import xml.etree.ElementTree as ET
+
 from docx import Document
 from docx.shared import Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
@@ -13,7 +17,6 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 app = Flask(__name__)
 
-# ===== Render persistent storage =====
 BASE_DIR = os.getcwd()
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -74,14 +77,13 @@ def format_fieldsize_mm_to_cm(field_text):
 def parse_qcw(file_path):
     tree = ET.parse(file_path)
     root = tree.getroot()
-
     machines = {}
 
     for trend in root.findall(".//TrendData"):
         raw_machine = trend.find(".//Worklist/Name").text
         machine = normalize_machine(raw_machine)
-        date = trend.get("date").split(" ")[0]
 
+        date = trend.get("date").split(" ")[0]
         energy = trend.find(".//AdminValues/Energy").text
         modality = trend.find(".//AdminValues/Modality").text
         raw_field = trend.find(".//AdminValues/Fieldsize").text
@@ -107,7 +109,6 @@ def parse_qcw(file_path):
 
             name = val.tag
             value = val.find("Value").text
-
             min_val, max_val = tolerance_map.get(name, ("", ""))
             target = target_map.get(name, "")
 
@@ -133,21 +134,62 @@ def parse_qcw(file_path):
     return machines
 
 # =========================
-# DOCX GENERATION
+# HEADER + FOOTER
+# =========================
+
+def add_header_footer(doc):
+    section = doc.sections[0]
+
+    header = section.header
+    hp = header.paragraphs[0]
+    hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    logo_path = os.path.join(ASSET_FOLDER, "logo.png")
+    if os.path.exists(logo_path):
+        hp.add_run().add_picture(logo_path, width=Inches(1.2))
+
+    footer = section.footer
+    fp = footer.paragraphs[0]
+
+    fp.add_run("\n" + "_"*100 + "\n")
+
+    institute = "Institute Name"
+    name_file = os.path.join(ASSET_FOLDER, "name.txt")
+    if os.path.exists(name_file):
+        institute = open(name_file).read().strip()
+
+    fp.add_run(institute)
+
+    if os.path.exists(logo_path):
+        fp.add_run().add_picture(logo_path, width=Inches(0.8))
+
+# =========================
+# DOCX GENERATION (PRO)
 # =========================
 
 def generate_docx(machine, entry):
     doc = Document()
+    add_header_footer(doc)
 
-    doc.add_heading("Daily Quality Assurance", 0)
+    title = doc.add_heading("Daily Quality Assurance", 0)
+    title.alignment = 1
 
-    doc.add_paragraph(f"Machine Name: {machine}")
-    doc.add_paragraph(f"Date: {entry['date']}")
-    doc.add_paragraph(f"Type of Radiation: {entry['modality']}")
-    doc.add_paragraph(f"Energy: {entry['energy']} MV")
-    doc.add_paragraph(f"Field Size: {entry['field']}")
+    # machine + date row (no border)
+    info = doc.add_table(rows=1, cols=2)
+    left = info.rows[0].cells[0]
+    right = info.rows[0].cells[1]
+
+    left.text = f"Machine Name: {machine}"
+    right.text = f"Date: {entry['date']}"
+    right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
+    doc.add_paragraph(f"Energy : {entry['energy']} MV")
+    doc.add_paragraph(f"Field Size : {entry['field']}")
 
     table = doc.add_table(rows=1, cols=6)
+    table.style = "Table Grid"
+
     headers = ["Parameter", "Measured", "Target", "Tolerance", "Deviation", "Status"]
 
     for i, h in enumerate(headers):
@@ -162,13 +204,14 @@ def generate_docx(machine, entry):
         cells[4].text = row["deviation"]
         cells[5].text = row["status"]
 
-    filename = f"{machine}_{entry['date']}.docx"
-    path = os.path.join(OUTPUT_FOLDER, filename)
+    doc.add_paragraph("\nSignature:")
+
+    path = os.path.join(OUTPUT_FOLDER, f"{machine}_{entry['date']}.docx")
     doc.save(path)
     return path
 
 # =========================
-# PDF GENERATION (REPORTLAB)
+# PDF GENERATION
 # =========================
 
 def generate_pdf(machine, entry):
@@ -179,7 +222,6 @@ def generate_pdf(machine, entry):
     doc = SimpleDocTemplate(path, pagesize=A4)
 
     elements = []
-
     elements.append(Paragraph("Daily Quality Assurance", styles['Title']))
     elements.append(Spacer(1, 10))
 
@@ -188,9 +230,10 @@ def generate_pdf(machine, entry):
     elements.append(Paragraph(f"Type of Radiation: {entry['modality']}", styles['Normal']))
     elements.append(Paragraph(f"Energy: {entry['energy']} MV", styles['Normal']))
     elements.append(Paragraph(f"Field Size: {entry['field']}", styles['Normal']))
+
     elements.append(Spacer(1, 10))
 
-    data = [["Parameter", "Measured", "Target", "Tolerance", "Deviation", "Status"]]
+    data = [["Parameter","Measured","Target","Tolerance","Deviation","Status"]]
 
     for row in entry["data"]:
         data.append([
@@ -204,13 +247,13 @@ def generate_pdf(machine, entry):
 
     table = Table(data)
     table.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 1, colors.black),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+        ("GRID",(0,0),(-1,-1),1,colors.black),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey)
     ]))
 
     elements.append(table)
-
     doc.build(elements)
+
     return path
 
 # =========================
@@ -229,7 +272,6 @@ def index():
 
     return render_template("index.html")
 
-
 @app.route("/generate/<machine>/<int:index>/<format>")
 def generate(machine, index, format):
     file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
@@ -243,22 +285,7 @@ def generate(machine, index, format):
 
     return send_file(path, as_attachment=True)
 
-
-@app.route("/generate_all/<machine>/<format>")
-def generate_all(machine, format):
-    file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
-    machines = parse_qcw(file_path)
-
-    paths = []
-    for entry in machines[machine]:
-        if format == "docx":
-            paths.append(generate_docx(machine, entry))
-        else:
-            paths.append(generate_pdf(machine, entry))
-
-    # Return first file for now (simple version)
-    return send_file(paths[0], as_attachment=True)
-
+# =========================
 
 if __name__ == "__main__":
     app.run()
