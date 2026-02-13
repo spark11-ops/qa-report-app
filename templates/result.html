@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QA Results</title>
+
+    <style>
+        body {
+            background-color: #121212;
+            color: #ff69b4;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .top-right {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            font-size: 14px;
+            color: #ff69b4;
+        }
+
+        h1 {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* two column layout */
+        .row {
+            display: flex;
+            justify-content: space-around;
+            width: 95%;
+            margin: auto;
+        }
+
+        .column {
+            width: 45%;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .machine-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .divider {
+            border-top: 2px solid #ff69b4;
+            margin: 10px 0 20px 0;
+        }
+
+        .entry {
+            padding: 10px 0;
+            border-top: 1px solid #ff69b4;
+        }
+
+        .entry:last-child {
+            border-bottom: 1px solid #ff69b4;
+        }
+
+        .entry p {
+            margin: 5px 0;
+        }
+
+        .buttons {
+            margin-top: 8px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 14px;
+            margin: 4px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background-color: #1e7e34;
+        }
+
+        .compiled {
+            margin-bottom: 15px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="top-right">Made by Aditya</div>
+
+<h1>Daily QA Results</h1>
+
+<div class="row">
+
+    <!-- LEFT COLUMN (Unique) -->
+    <div class="column">
+
+        {% if machines.get('Unique') %}
+            <div class="machine-title"><b>Unique</b></div>
+
+            <!-- COMPILED BUTTONS -->
+            <div class="compiled">
+                <a class="btn" href="/generate_all/Unique/docx">Download ALL DOCX</a>
+                <a class="btn" href="/generate_all/Unique/pdf">Download ALL PDF</a>
+            </div>
+
+            <div class="divider"></div>
+
+            {% for entry in machines['Unique'] %}
+                <div class="entry">
+                    <p><b>Date:</b> {{ entry.date }}</p>
+                    <p><b>Radiation:</b> {{ entry.modality }}</p>
+                    <p><b>Energy:</b> {{ entry.energy }} MV</p>
+                    <p><b>Field Size:</b> {{ entry.field }}</p>
+
+                    <div class="buttons">
+                        <a class="btn" href="/generate/Unique/{{ loop.index0 }}/docx">DOCX</a>
+                        <a class="btn" href="/generate/Unique/{{ loop.index0 }}/pdf">PDF</a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+    </div>
+
+    <!-- RIGHT COLUMN (TrueBeam) -->
+    <div class="column">
+
+        {% if machines.get('TrueBeam') %}
+            <div class="machine-title"><b>TrueBeam</b></div>
+
+            <!-- COMPILED BUTTONS -->
+            <div class="compiled">
+                <a class="btn" href="/generate_all/TrueBeam/docx">Download ALL DOCX</a>
+                <a class="btn" href="/generate_all/TrueBeam/pdf">Download ALL PDF</a>
+            </div>
+
+            <div class="divider"></div>
+
+            {% for entry in machines['TrueBeam'] %}
+                <div class="entry">
+                    <p><b>Date:</b> {{ entry.date }}</p>
+                    <p><b>Radiation:</b> {{ entry.modality }}</p>
+                    <p><b>Energy:</b> {{ entry.energy }} MV</p>
+                    <p><b>Field Size:</b> {{ entry.field }}</p>
+
+                    <div class="buttons">
+                        <a class="btn" href="/generate/TrueBeam/{{ loop.index0 }}/docx">DOCX</a>
+                        <a class="btn" href="/generate/TrueBeam/{{ loop.index0 }}/pdf">PDF</a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+</html>

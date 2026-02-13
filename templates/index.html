@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily QA Report Generator</title>
+
+    <style>
+        body {
+            background-color: #121212;
+            color: #ff69b4;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .top-right {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 14px;
+        }
+
+        .container {
+            width: 500px;
+            margin: 80px auto;
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1e7e34;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="top-right">Made by Aditya</div>
+
+<div class="container">
+
+    <h1>Daily QA Report Generator</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <label>Upload QCW File</label>
+        <input type="file" name="file" required>
+
+        <label>Institute Name</label>
+        <input type="text" name="institute">
+
+        <label>Upload Institute Logo</label>
+        <input type="file" name="logo" accept="image/*">
+
+        <button type="submit">Generate QA Reports</button>
+
+    </form>
+
+</div>
+
+</body>
+</html>
