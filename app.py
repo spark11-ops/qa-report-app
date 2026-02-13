@@ -14,7 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 app = Flask(__name__)
 
 # ===== Render persistent storage =====
-BASE_DIR = "/data"
+BASE_DIR = os.getcwd()
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
