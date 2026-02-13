@@ -53,10 +53,13 @@ def calc_deviation(value, target):
         return ""
 
 def normalize_machine(name):
+    name = name.strip()
     if "Unique" in name:
         return "Unique"
-    if "TrueBeam" in name:
+    if "TrueBeam" in name or "Truebeam" in name:
         return "TrueBeam"
+    if "Halcyon" in name:
+        return "Halcyon"
     return name
 
 def format_fieldsize_mm_to_cm(field_text):
@@ -67,6 +70,10 @@ def format_fieldsize_mm_to_cm(field_text):
         return f"{x_cm:.0f} cm X {y_cm:.0f} cm"
     except:
         return field_text
+
+# 👉 NEW: energy unit logic
+def energy_unit(modality):
+    return "MV" if modality.lower().startswith("photon") else "MeV"
 
 # =========================
 # QCW PARSER
@@ -190,7 +197,10 @@ def generate_docx(machine, entry):
     right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
     doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
-    doc.add_paragraph(f"Energy : {entry['energy']} MV")
+
+    unit = energy_unit(entry["modality"])
+    doc.add_paragraph(f"Energy : {entry['energy']} {unit}")
+
     doc.add_paragraph(f"Field Size : {entry['field']}")
 
     table = doc.add_table(rows=1, cols=6)
@@ -210,7 +220,7 @@ def generate_docx(machine, entry):
         cells[4].text = row["deviation"]
         cells[5].text = row["status"]
 
-    doc.add_paragraph("Signature:")
+    doc.add_paragraph("\n\n\n\n\n\n\n\nSignature:")
 
     path = os.path.join(OUTPUT_FOLDER, f"{machine}_{entry['date']}.docx")
     doc.save(path)
@@ -239,7 +249,10 @@ def generate_combined_docx(machine, entries):
         right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
         doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
-        doc.add_paragraph(f"Energy : {entry['energy']} MV")
+
+        unit = energy_unit(entry["modality"])
+        doc.add_paragraph(f"Energy : {entry['energy']} {unit}")
+
         doc.add_paragraph(f"Field Size : {entry['field']}")
 
         table = doc.add_table(rows=1, cols=6)
@@ -259,7 +272,7 @@ def generate_combined_docx(machine, entries):
             cells[4].text = row["deviation"]
             cells[5].text = row["status"]
 
-        doc.add_paragraph("Signature:")
+        doc.add_paragraph("\n\n\n\n\n\n\n\nSignature:")
 
         if i != len(entries)-1:
             doc.add_page_break()
@@ -269,7 +282,7 @@ def generate_combined_docx(machine, entries):
     return path
 
 # =========================
-# PDF COMBINED (REPORTLAB)
+# PDF COMBINED
 # =========================
 
 def generate_combined_pdf(machine, entries):
@@ -288,9 +301,11 @@ def generate_combined_pdf(machine, entries):
         elements.append(Paragraph(f"Machine: {machine}", styles['Normal']))
         elements.append(Paragraph(f"Date: {entry['date']}", styles['Normal']))
         elements.append(Paragraph(f"Type: {entry['modality']}", styles['Normal']))
-        elements.append(Paragraph(f"Energy: {entry['energy']} MV", styles['Normal']))
-        elements.append(Paragraph(f"Field Size: {entry['field']}", styles['Normal']))
 
+        unit = energy_unit(entry["modality"])
+        elements.append(Paragraph(f"Energy: {entry['energy']} {unit}", styles['Normal']))
+
+        elements.append(Paragraph(f"Field Size: {entry['field']}", styles['Normal']))
         elements.append(Spacer(1,10))
 
         data = [["Parameter","Measured","Target","Tolerance","Deviation","Status"]]
@@ -340,7 +355,6 @@ def index():
             logo.save(os.path.join(ASSET_FOLDER,"logo.png"))
 
         machines = parse_qcw(file_path)
-
         return render_template("result.html", machines=machines)
 
     return render_template("index.html")
@@ -356,7 +370,7 @@ def generate(machine,index,format):
     if format == "docx":
         path = generate_docx(machine, entry)
     else:
-        path = generate_pdf(machine, entry)
+        path = generate_combined_pdf(machine, [entry])
 
     return send_file(path, as_attachment=True)
 
@@ -379,7 +393,6 @@ def generate_all_pdf(machine):
 
     path = generate_combined_pdf(machine, machines[machine])
     return send_file(path, as_attachment=True)
-
 
 # =========================
 # PORT FOR RENDER
