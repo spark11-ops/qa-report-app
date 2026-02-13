@@ -1,4 +1,4 @@
-# ==== PRO VERSION QA SYSTEM (RENDER SAFE + REPORTLAB PDF) ====
+# ==== FINAL PRO QA SYSTEM (RENDER READY) ====
 
 from flask import Flask, render_template, request, send_file
 import os
@@ -13,6 +13,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
+
 app = Flask(__name__)
 
 BASE_DIR = os.getcwd()
@@ -25,6 +26,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(ASSET_FOLDER, exist_ok=True)
 
+
 # =========================
 # HELPERS
 # =========================
@@ -35,12 +37,14 @@ def format_decimal(value):
     except:
         return value
 
+
 def check_pass_fail(value, min_val, max_val):
     try:
         v = float(value)
         return "PASS" if float(min_val) <= v <= float(max_val) else "FAIL"
     except:
         return "NA"
+
 
 def calc_deviation(value, target):
     try:
@@ -52,12 +56,14 @@ def calc_deviation(value, target):
     except:
         return ""
 
+
 def normalize_machine(name):
     if "Unique" in name:
         return "Unique"
     if "TrueBeam" in name:
         return "TrueBeam"
     return name
+
 
 def format_fieldsize_mm_to_cm(field_text):
     try:
@@ -67,6 +73,7 @@ def format_fieldsize_mm_to_cm(field_text):
         return f"{x_cm:.0f} cm X {y_cm:.0f} cm"
     except:
         return field_text
+
 
 # =========================
 # QCW PARSER
@@ -78,6 +85,7 @@ def parse_qcw(file_path):
     machines = {}
 
     for trend in root.findall(".//TrendData"):
+
         raw_machine = trend.find(".//Worklist/Name").text
         machine = normalize_machine(raw_machine)
 
@@ -132,20 +140,70 @@ def parse_qcw(file_path):
 
     return machines
 
+
+# =========================
+# HEADER + FOOTER FIXED
+# =========================
+
+def add_header_footer(doc):
+
+    section = doc.sections[0]
+
+    logo_path = os.path.join(ASSET_FOLDER, "logo.png")
+    name_file = os.path.join(ASSET_FOLDER, "name.txt")
+
+    # HEADER
+    header = section.header
+    hp = header.paragraphs[0]
+    hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    if os.path.exists(logo_path):
+        hp.clear()
+        run = hp.add_run()
+        run.add_picture(logo_path, width=Inches(1.2))
+
+    # FOOTER
+    footer = section.footer
+    fp = footer.paragraphs[0]
+
+    fp.clear()
+
+    fp.add_run("\n" + "_"*90 + "\n")
+
+    institute = "Institute Name"
+
+    if os.path.exists(name_file):
+        with open(name_file) as f:
+            institute = f.read().strip()
+
+    fp.add_run(institute)
+
+    if os.path.exists(logo_path):
+        fp.add_run("   ")
+        fp.add_run().add_picture(logo_path, width=Inches(0.8))
+
+
 # =========================
 # DOCX GENERATION
 # =========================
 
 def generate_docx(machine, entry):
+
     doc = Document()
+    add_header_footer(doc)
 
     title = doc.add_heading("Daily Quality Assurance", 0)
     title.alignment = 1
 
+    # Machine + Date row
     info = doc.add_table(rows=1, cols=2)
-    info.rows[0].cells[0].text = f"Machine Name: {machine}"
-    info.rows[0].cells[1].text = f"Date: {entry['date']}"
-    info.rows[0].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    left = info.rows[0].cells[0]
+    right = info.rows[0].cells[1]
+
+    left.text = f"Machine Name: {machine}"
+    right.text = f"Date: {entry['date']}"
+    right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
     doc.add_paragraph(f"Type of Radiation : {entry['modality']}")
     doc.add_paragraph(f"Energy : {entry['energy']} MV")
@@ -168,21 +226,26 @@ def generate_docx(machine, entry):
         cells[4].text = row["deviation"]
         cells[5].text = row["status"]
 
-    doc.add_paragraph("\nSignature:")
+    doc.add_paragraph("Signature:")
 
-    path = os.path.join(OUTPUT_FOLDER, f"{machine}_{entry['date']}.docx")
+    filename = f"{machine}_{entry['date']}.docx"
+    path = os.path.join(OUTPUT_FOLDER, filename)
     doc.save(path)
+
     return path
 
+
 # =========================
-# PDF GENERATION (REPORTLAB)
+# PDF GENERATION
 # =========================
 
 def generate_pdf(machine, entry):
+
     filename = f"{machine}_{entry['date']}.pdf"
     path = os.path.join(OUTPUT_FOLDER, filename)
 
     styles = getSampleStyleSheet()
+
     doc = SimpleDocTemplate(path, pagesize=A4)
 
     elements = []
@@ -190,11 +253,12 @@ def generate_pdf(machine, entry):
     elements.append(Paragraph("Daily Quality Assurance", styles['Title']))
     elements.append(Spacer(1, 10))
 
-    elements.append(Paragraph(f"Machine Name: {machine}", styles['Normal']))
+    elements.append(Paragraph(f"Machine: {machine}", styles['Normal']))
     elements.append(Paragraph(f"Date: {entry['date']}", styles['Normal']))
     elements.append(Paragraph(f"Type of Radiation: {entry['modality']}", styles['Normal']))
     elements.append(Paragraph(f"Energy: {entry['energy']} MV", styles['Normal']))
     elements.append(Paragraph(f"Field Size: {entry['field']}", styles['Normal']))
+
     elements.append(Spacer(1, 10))
 
     data = [["Parameter","Measured","Target","Tolerance","Deviation","Status"]]
@@ -210,37 +274,54 @@ def generate_pdf(machine, entry):
         ])
 
     table = Table(data)
+
     table.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),1,colors.black),
-        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-        ("ALIGN",(0,0),(-1,-1),"CENTER")
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey)
     ]))
 
     elements.append(table)
+
     doc.build(elements)
 
     return path
+
 
 # =========================
 # ROUTES
 # =========================
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET","POST"])
 def index():
+
     if request.method == "POST":
+
         file = request.files.get("file")
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
 
+        inst_name = request.form.get("institute")
+        if inst_name:
+            with open(os.path.join(ASSET_FOLDER,"name.txt"),"w") as f:
+                f.write(inst_name)
+
+        logo = request.files.get("logo")
+        if logo and logo.filename != "":
+            logo.save(os.path.join(ASSET_FOLDER,"logo.png"))
+
         machines = parse_qcw(file_path)
+
         return render_template("result.html", machines=machines)
 
     return render_template("index.html")
 
+
 @app.route("/generate/<machine>/<int:index>/<format>")
-def generate(machine, index, format):
+def generate(machine,index,format):
+
     file_path = os.path.join(UPLOAD_FOLDER, os.listdir(UPLOAD_FOLDER)[0])
     machines = parse_qcw(file_path)
+
     entry = machines[machine][index]
 
     if format == "docx":
@@ -250,10 +331,11 @@ def generate(machine, index, format):
 
     return send_file(path, as_attachment=True)
 
+
 # =========================
-# RUN (RENDER SAFE)
+# RENDER PORT FIX
 # =========================
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT",10000))
     app.run(host="0.0.0.0", port=port)
