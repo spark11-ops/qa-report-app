@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Results - Date Based</title>
+    <meta name="google-adsense-account" content="ca-pub-2008560249522509">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .top-right {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            font-size: 14px;
+            color: #ff69b4;
+            z-index: 1000;
+            opacity: 0.8;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+        }
+
+        /* Analytics Dashboard */
+        .analytics-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stat-card {
+            background: rgba(30, 30, 30, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 105, 180, 0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(255, 105, 180, 0.2);
+            border-color: rgba(255, 105, 180, 0.4);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ff69b4;
+            margin-bottom: 5px;
+        }
+
+        .stat-detail {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .stat-value.success {
+            color: #28a745;
+        }
+
+        .stat-value.warning {
+            color: #ffc107;
+        }
+
+        .stat-value.danger {
+            color: #dc3545;
+        }
+
+        /* Download All Section */
+        .download-all-section {
+            max-width: 1400px;
+            margin: 0 auto 40px;
+            text-align: center;
+        }
+
+        .download-all-container {
+            background: rgba(30, 30, 30, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 105, 180, 0.2);
+            display: inline-block;
+        }
+
+        .download-all-title {
+            font-size: 18px;
+            color: #ff69b4;
+            margin-bottom: 15px;
+        }
+
+        .download-all-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* Date Sections */
+        .dates-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .date-section {
+            background: rgba(30, 30, 30, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 105, 180, 0.2);
+        }
+
+        .date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 105, 180, 0.3);
+        }
+
+        .date-info {
+            flex: 1;
+        }
+
+        .date-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff69b4;
+            margin-bottom: 8px;
+        }
+
+        .date-meta {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .date-download {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ff69b4;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 105, 180, 0.1);
+            border-color: #ff69b4;
+        }
+
+        /* Worklist Cards */
+        .worklists-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .worklist-card {
+            background: rgba(40, 40, 40, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 105, 180, 0.15);
+        }
+
+        .worklist-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff69b4;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 105, 180, 0.2);
+        }
+
+        .entry-item {
+            background: rgba(50, 50, 50, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #ff69b4;
+        }
+
+        .entry-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .entry-detail {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 13px;
+        }
+
+        .entry-label {
+            color: #888;
+        }
+
+        .entry-value {
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pass {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .status-fail {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .analytics-dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .date-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .date-download {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .worklists-container {
+                grid-template-columns: 1fr;
+            }
+
+            .download-all-buttons {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+
+        /* Loading Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card,
+        .date-section {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+        /* Back Button */
+        .back-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff69b4, #ff1493);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(255, 105, 180, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            transform: scale(1.1) rotate(360deg);
+            box-shadow: 0 8px 30px rgba(255, 105, 180, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-right">Made by Aditya</div>
+
+    <div class="header">
+        <h1>Daily QA Results Dashboard</h1>
+        <p class="subtitle">Results organized by date</p>
+    </div>
+
+    <!-- Analytics Dashboard -->
+    {% if analytics %}
+    <div class="analytics-dashboard">
+        <div class="stat-card">
+            <div class="stat-label">Total Tests</div>
+            <div class="stat-value">{{ analytics.total_tests }}</div>
+            <div class="stat-detail">Across all dates</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Pass Rate</div>
+            <div class="stat-value {% if analytics.pass_rate >= 95 %}success{% elif analytics.pass_rate >= 85 %}warning{% else %}danger{% endif %}">
+                {{ "%.1f"|format(analytics.pass_rate) }}%
+            </div>
+            <div class="stat-detail">{{ analytics.total_passes }} passed</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Failed Tests</div>
+            <div class="stat-value {% if analytics.total_fails == 0 %}success{% elif analytics.total_fails <= 5 %}warning{% else %}danger{% endif %}">
+                {{ analytics.total_fails }}
+            </div>
+            <div class="stat-detail">Require attention</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Test Dates</div>
+            <div class="stat-value">{{ analytics.total_dates }}</div>
+            <div class="stat-detail">{{ analytics.total_worklists }} machines</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Download All Section -->
+    <div class="download-all-section">
+        <div class="download-all-container">
+            <div class="download-all-title">📥 Download Complete Report</div>
+            <div class="download-all-buttons">
+                <a href="/generate_all/docx" class="btn btn-primary">
+                    📄 Download ALL Dates (DOCX)
+                </a>
+                <a href="/generate_all/pdf" class="btn btn-secondary">
+                    📑 Download ALL Dates (PDF)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dates Container -->
+    <div class="dates-container">
+        {% for date, worklists in dates_data.items() | sort %}
+        <div class="date-section">
+            <div class="date-header">
+                <div class="date-info">
+                    <div class="date-title">📅 {{ date }}</div>
+                    <div class="date-meta">
+                        {{ worklists | length }} machine(s) tested
+                        {% if analytics and analytics.by_date[date] %}
+                        • Pass Rate: {{ "%.1f"|format(analytics.by_date[date].pass_rate) }}%
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="date-download">
+                    <a href="/generate/{{ date }}/docx" class="btn btn-primary">
+                        📄 DOCX
+                    </a>
+                    <a href="/generate/{{ date }}/pdf" class="btn btn-secondary">
+                        📑 PDF
+                    </a>
+                </div>
+            </div>
+
+            <!-- Worklists for this date -->
+            <div class="worklists-container">
+                {% for worklist in worklists %}
+                <div class="worklist-card">
+                    <div class="worklist-header">
+                        🏥 {{ worklist.worklist_name }}
+                    </div>
+
+                    <!-- Entries for this worklist -->
+                    {% for entry in worklist.entries %}
+                    <div class="entry-item">
+                        <div class="entry-detail">
+                            <span class="entry-label">Radiation:</span>
+                            <span class="entry-value">{{ entry.modality }}</span>
+                        </div>
+                        <div class="entry-detail">
+                            <span class="entry-label">Energy:</span>
+                            <span class="entry-value">{{ entry.energy }} {% if entry.modality.lower().startswith('photon') %}MV{% else %}MeV{% endif %}</span>
+                        </div>
+                        <div class="entry-detail">
+                            <span class="entry-label">Field Size:</span>
+                            <span class="entry-value">{{ entry.field }}</span>
+                        </div>
+                        <div class="entry-detail">
+                            <span class="entry-label">Status:</span>
+                            {% set failed_count = entry.data | selectattr('status', 'equalto', 'FAIL') | list | length %}
+                            {% if failed_count == 0 %}
+                                <span class="status-badge status-pass">✓ All Pass</span>
+                            {% else %}
+                                <span class="status-badge status-fail">{{ failed_count }} Failed</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Back to Home Button -->
+    <a href="/" class="back-btn" title="Upload New File">🏠</a>
+
+</body>
+</html>

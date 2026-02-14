@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily QA Report Generator</title>
+    <meta name="google-adsense-account" content="ca-pub-2008560249522509">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #ff69b4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .top-right {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            font-size: 14px;
+            color: #ff69b4;
+            opacity: 0.8;
+            z-index: 1000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(30, 30, 30, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(255, 105, 180, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 105, 180, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 35px;
+        }
+
+        /* Drag and Drop Zone */
+        .upload-zone {
+            border: 2px dashed #ff69b4;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 105, 180, 0.05);
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            background: rgba(255, 105, 180, 0.1);
+            border-color: #ff1493;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            background: rgba(255, 105, 180, 0.15);
+            border-color: #ff1493;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ff69b4;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #ff69b4;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .file-info {
+            background: rgba(255, 105, 180, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            border-left: 3px solid #ff69b4;
+        }
+
+        .file-info.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #ff69b4;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Form Fields */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #ff69b4;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #ff69b4;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.1);
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        /* Custom File Input */
+        .logo-upload {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .logo-upload-btn {
+            display: block;
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logo-upload-btn:hover {
+            border-color: #ff69b4;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Submit Button */
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 105, 180, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        button.loading .spinner {
+            display: inline-block;
+        }
+
+        button.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 105, 180, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 30, 30, 0.95);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ff69b4;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            z-index: 2000;
+            max-width: 300px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: #ff4444;
+        }
+
+        .toast.success {
+            border-left-color: #28a745;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .upload-zone {
+                padding: 30px 15px;
+            }
+        }
+
+        /* Optional Features Section */
+        .optional-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 105, 180, 0.2);
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-right">Made by Aditya</div>
+
+    <div class="container">
+        <h1>Daily QA Report Generator</h1>
+        <p class="subtitle">Professional QA reports for radiation therapy machines</p>
+
+        <form id="uploadForm" method="POST" enctype="multipart/form-data">
+            
+            <!-- Drag & Drop Zone -->
+            <div class="upload-zone" id="dropZone">
+                <div class="upload-icon">📊</div>
+                <div class="upload-text">Drag & drop your QCW file here</div>
+                <div class="upload-hint">or click to browse</div>
+                <input type="file" name="file" id="fileInput" required accept=".qcw" style="display: none;">
+            </div>
+
+            <!-- File Info Display -->
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+
+            <!-- Optional Customization -->
+            <div class="optional-section">
+                <div class="section-title">Optional Customization</div>
+
+                <div class="form-group">
+                    <label for="institute">Institute Name</label>
+                    <input type="text" name="institute" id="institute" placeholder="e.g., City Cancer Hospital">
+                </div>
+
+                <div class="form-group">
+                    <label for="logo">Institute Logo</label>
+                    <div class="logo-upload">
+                        <input type="file" name="logo" id="logo" accept="image/*">
+                        <div class="logo-upload-btn" id="logoBtn">Choose logo image (PNG, JPG)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Processing...</div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="submitBtn">
+                <span class="btn-text">Generate QA Reports</span>
+                <div class="spinner"></div>
+            </button>
+
+        </form>
+    </div>
+
+    <script>
+        // Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const logoInput = document.getElementById('logo');
+        const logoBtn = document.getElementById('logoBtn');
+
+        // Toast Notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // File size formatter
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Handle file selection
+        function handleFile(file) {
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.classList.add('active');
+                showToast('File selected: ' + file.name, 'success');
+            }
+        }
+
+        // Click to upload
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            handleFile(file);
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            
+            if (file && file.name.endsWith('.qcw')) {
+                fileInput.files = dt.files;
+                handleFile(file);
+            } else {
+                showToast('Please upload a .qcw file', 'error');
+            }
+        });
+
+        // Logo upload display
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                logoBtn.textContent = file.name;
+                logoBtn.style.color = '#ff69b4';
+            }
+        });
+
+        // Form submission
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            if (!fileInput.files[0]) {
+                showToast('Please select a QCW file', 'error');
+                return;
+            }
+
+            // Show loading state
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            progressContainer.classList.add('active');
+
+            // Simulate progress (you can make this more accurate with actual upload progress)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                progressFill.style.width = progress + '%';
+                
+                if (progress >= 90) {
+                    clearInterval(progressInterval);
+                }
+            }, 200);
+
+            // Create FormData and submit
+            const formData = new FormData(uploadForm);
+
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Upload failed');
+                return response.text();
+            })
+            .then(html => {
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Complete!';
+                
+                setTimeout(() => {
+                    document.body.innerHTML = html;
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Upload failed. Please try again.', 'error');
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                progressContainer.classList.remove('active');
+                clearInterval(progressInterval);
+            });
+        });
+    </script>
+
+</body>
+</html>
