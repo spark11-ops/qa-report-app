@@ -16,7 +16,20 @@ from docx.oxml import OxmlElement
 import subprocess
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'change-this-to-random-secret-key-in-production')
+
+# Secret key for session management
+secret_key = os.environ.get('SECRET_KEY')
+if not secret_key:
+    # Generate a random key for this instance (not recommended for production)
+    import secrets
+    secret_key = secrets.token_hex(32)
+    print("WARNING: Using randomly generated SECRET_KEY. Set SECRET_KEY environment variable in production!")
+
+app.secret_key = secret_key
+
+# Make sessions permanent (last 31 days)
+from datetime import timedelta
+app.permanent_session_lifetime = timedelta(days=31)
 
 BASE_DIR = os.getcwd()
 
@@ -173,7 +186,11 @@ def parse_qcw_with_mapping(file_path, machine_name_mapping):
     # Convert to regular dict and sort
     result = {}
     for date in sorted(dates_data.keys()):
-        result[date] = dict(dates_data[date])
+        result[date] = {}
+        for machine_name, fields_data in dates_data[date].items():
+            result[date][machine_name] = {}
+            for field_size, energy_list in fields_data.items():
+                result[date][machine_name][field_size] = energy_list
     
     return result
 
@@ -363,29 +380,40 @@ def index():
         file = request.files.get("file")
         
         if not file:
+            print("DEBUG: No file in request")
             return jsonify({"error": "No file uploaded"}), 400
         
         filename = file.filename
+        print(f"DEBUG: File uploaded: {filename}")
+        
         file_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(file_path)
+        print(f"DEBUG: File saved to: {file_path}")
         
         # Save institute name and logo
         inst_name = request.form.get("institute")
         if inst_name:
             with open(os.path.join(ASSET_FOLDER, "name.txt"), "w") as f:
                 f.write(inst_name)
+            print(f"DEBUG: Institute name saved: {inst_name}")
         
         logo = request.files.get("logo")
         if logo and logo.filename != "":
             logo.save(os.path.join(ASSET_FOLDER, "logo.png"))
+            print("DEBUG: Logo saved")
         
         # Extract worklists
+        print("DEBUG: Extracting worklists...")
         worklists = extract_worklists(file_path)
+        print(f"DEBUG: Found {len(worklists)} worklists: {list(worklists.values())}")
         
-        # Store in session
+        # Store in session (save filename, not full path)
+        session.permanent = True
         session['filename'] = filename
-        session['file_path'] = file_path
         session['worklists'] = worklists
+        session.modified = True  # Force session save
+        
+        print("DEBUG: Session data stored, redirecting to worklist_mapping")
         
         # Redirect to worklist mapping page
         return redirect(url_for('worklist_mapping'))
@@ -397,11 +425,22 @@ def index():
 def worklist_mapping():
     """Page to map worklist IDs to custom machine names"""
     if 'worklists' not in session:
+        print("DEBUG: No worklists in session on GET, redirecting to index")
         return redirect(url_for('index'))
     
+    print(f"DEBUG: Worklist mapping page loaded, {len(session['worklists'])} worklists in session")
+    
     if request.method == "POST":
+        print("DEBUG: Worklist mapping POST received")
+        
         # Get machine name mappings from form
-        worklists = session['worklists']
+        worklists = session.get('worklists', {})
+        print(f"DEBUG: Worklists from session: {len(worklists)} items")
+        
+        if not worklists:
+            print("DEBUG: No worklists in session, redirecting to index")
+            return redirect(url_for('index'))
+        
         machine_name_mapping = {}
         
         for wl_id in worklists.keys():
@@ -411,14 +450,35 @@ def worklist_mapping():
             else:
                 machine_name_mapping[wl_id] = worklists[wl_id]
         
+        print(f"DEBUG: Machine name mapping: {machine_name_mapping}")
+        
+        # Reconstruct file path from filename
+        filename = session.get('filename')
+        print(f"DEBUG: Filename from session: {filename}")
+        
+        if not filename:
+            print("DEBUG: No filename in session, redirecting to index")
+            return redirect(url_for('index'))
+        
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        print(f"DEBUG: File path: {file_path}")
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            print(f"DEBUG: File does not exist at {file_path}, redirecting to index")
+            return redirect(url_for('index'))
+        
+        print("DEBUG: Parsing QCW file...")
         # Parse QCW with custom names
-        file_path = session['file_path']
         dates_data = parse_qcw_with_mapping(file_path, machine_name_mapping)
+        print(f"DEBUG: Parsed {len(dates_data)} dates")
         
         # Store in session
         session['dates_data'] = dates_data
         session['machine_name_mapping'] = machine_name_mapping
+        session.modified = True
         
+        print("DEBUG: Redirecting to results")
         return redirect(url_for('results'))
     
     return render_template("worklist_mapping.html", worklists=session['worklists'])
@@ -427,11 +487,12 @@ def worklist_mapping():
 @app.route("/results")
 def results():
     """Display results page"""
-    if 'dates_data' not in session:
+    if 'dates_data' not in session or 'machine_name_mapping' not in session:
+        # Session data missing, redirect to start
         return redirect(url_for('index'))
     
     dates_data = session['dates_data']
-    machine_name_mapping = session.get('machine_name_mapping', {})
+    machine_name_mapping = session['machine_name_mapping']
     
     return render_template("result.html", 
                          dates_data=dates_data,
