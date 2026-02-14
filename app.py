@@ -3,8 +3,9 @@
 from flask import Flask, render_template, request, send_file, session, jsonify, redirect, url_for
 import os
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
+import pickle
 
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
@@ -36,10 +37,12 @@ BASE_DIR = os.getcwd()
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
 ASSET_FOLDER = os.path.join(BASE_DIR, "assets")
+DATA_FOLDER = os.path.join(BASE_DIR, "data")  # For storing parsed data
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(ASSET_FOLDER, exist_ok=True)
+os.makedirs(DATA_FOLDER, exist_ok=True)
 
 # =========================
 # HELPERS
@@ -371,11 +374,33 @@ def convert_docx_to_pdf(docx_path):
         return None
 
 # =========================
+# CLEANUP OLD DATA FILES
+# =========================
+
+def cleanup_old_data_files():
+    """Remove data files older than 24 hours"""
+    try:
+        current_time = datetime.now().timestamp()
+        for filename in os.listdir(DATA_FOLDER):
+            if filename.startswith('data_') and filename.endswith('.pkl'):
+                filepath = os.path.join(DATA_FOLDER, filename)
+                file_age = current_time - os.path.getmtime(filepath)
+                # Delete files older than 24 hours
+                if file_age > 86400:  # 24 hours in seconds
+                    os.remove(filepath)
+                    print(f"DEBUG: Cleaned up old data file: {filename}")
+    except Exception as e:
+        print(f"DEBUG: Error during cleanup: {e}")
+
+# =========================
 # ROUTES
 # =========================
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    # Cleanup old data files
+    cleanup_old_data_files()
+    
     if request.method == "POST":
         file = request.files.get("file")
         
@@ -473,8 +498,18 @@ def worklist_mapping():
         dates_data = parse_qcw_with_mapping(file_path, machine_name_mapping)
         print(f"DEBUG: Parsed {len(dates_data)} dates")
         
-        # Store in session
-        session['dates_data'] = dates_data
+        # Save to file instead of session (session too large for 189 dates!)
+        import secrets
+        data_id = secrets.token_hex(16)
+        data_file = os.path.join(DATA_FOLDER, f"data_{data_id}.pkl")
+        
+        with open(data_file, 'wb') as f:
+            pickle.dump(dates_data, f)
+        
+        print(f"DEBUG: Saved data to file: {data_file}")
+        
+        # Store only the data file ID in session (small!)
+        session['data_id'] = data_id
         session['machine_name_mapping'] = machine_name_mapping
         session.modified = True
         
@@ -487,12 +522,25 @@ def worklist_mapping():
 @app.route("/results")
 def results():
     """Display results page"""
-    if 'dates_data' not in session or 'machine_name_mapping' not in session:
+    if 'data_id' not in session or 'machine_name_mapping' not in session:
         # Session data missing, redirect to start
+        print("DEBUG: No data_id in session, redirecting to index")
         return redirect(url_for('index'))
     
-    dates_data = session['dates_data']
+    # Load data from file
+    data_id = session['data_id']
+    data_file = os.path.join(DATA_FOLDER, f"data_{data_id}.pkl")
+    
+    if not os.path.exists(data_file):
+        print(f"DEBUG: Data file not found: {data_file}, redirecting to index")
+        return redirect(url_for('index'))
+    
+    with open(data_file, 'rb') as f:
+        dates_data = pickle.load(f)
+    
     machine_name_mapping = session['machine_name_mapping']
+    
+    print(f"DEBUG: Loaded {len(dates_data)} dates from file, displaying results")
     
     return render_template("result.html", 
                          dates_data=dates_data,
@@ -502,10 +550,19 @@ def results():
 @app.route("/generate/<date>/<format>")
 def generate_date_report(date, format):
     """Generate report for a specific date"""
-    if 'dates_data' not in session:
+    if 'data_id' not in session:
         return "No data available", 404
     
-    dates_data = session['dates_data']
+    # Load data from file
+    data_id = session['data_id']
+    data_file = os.path.join(DATA_FOLDER, f"data_{data_id}.pkl")
+    
+    if not os.path.exists(data_file):
+        return "Data file not found", 404
+    
+    with open(data_file, 'rb') as f:
+        dates_data = pickle.load(f)
+    
     machine_name_mapping = session.get('machine_name_mapping', {})
     
     if date not in dates_data:
@@ -531,10 +588,19 @@ def generate_date_report(date, format):
 @app.route("/generate_all/<format>")
 def generate_all_dates(format):
     """Generate combined report for ALL dates"""
-    if 'dates_data' not in session:
+    if 'data_id' not in session:
         return "No data available", 404
     
-    dates_data = session['dates_data']
+    # Load data from file
+    data_id = session['data_id']
+    data_file = os.path.join(DATA_FOLDER, f"data_{data_id}.pkl")
+    
+    if not os.path.exists(data_file):
+        return "Data file not found", 404
+    
+    with open(data_file, 'rb') as f:
+        dates_data = pickle.load(f)
+    
     machine_name_mapping = session.get('machine_name_mapping', {})
     
     # Create combined DOCX
