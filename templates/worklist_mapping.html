@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Machine Names</title>
+    <meta name="google-adsense-account" content="ca-pub-2008560249522509">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-right {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            font-size: 14px;
+            color: #ff69b4;
+            z-index: 1000;
+            opacity: 0.8;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background: rgba(30, 30, 30, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(255, 105, 180, 0.2);
+            border: 1px solid rgba(255, 105, 180, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 35px;
+        }
+
+        .info-box {
+            background: rgba(255, 105, 180, 0.1);
+            border-left: 3px solid #ff69b4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .worklist-item {
+            background: rgba(40, 40, 40, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 105, 180, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .worklist-item:hover {
+            border-color: rgba(255, 105, 180, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .worklist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .worklist-id {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .detected-name {
+            font-size: 14px;
+            color: #ff69b4;
+            font-weight: 600;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #ff69b4;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.1);
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 105, 180, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ff69b4;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 105, 180, 0.1);
+            border-color: #ff69b4;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .btn-container {
+                flex-direction: column;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .worklist-item {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .worklist-item:nth-child(1) { animation-delay: 0.1s; }
+        .worklist-item:nth-child(2) { animation-delay: 0.2s; }
+        .worklist-item:nth-child(3) { animation-delay: 0.3s; }
+        .worklist-item:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+
+    <div class="top-right">Made by Aditya</div>
+
+    <div class="container">
+        <h1>Configure Machine Names</h1>
+        <p class="subtitle">Customize how machines appear in your reports</p>
+
+        <div class="info-box">
+            <p><strong>📋 Found {{ worklists | length }} machine(s) in your QCW file</strong></p>
+            <p>Review the detected names below and customize them if needed.</p>
+        </div>
+
+        <form method="POST">
+            {% for worklist_id, worklist_name in worklists.items() %}
+            <div class="worklist-item">
+                <div class="worklist-header">
+                    <span class="detected-name">📍 Detected: {{ worklist_name }}</span>
+                    <span class="worklist-id">ID: {{ worklist_id }}</span>
+                </div>
+                
+                <label for="machine_{{ worklist_id }}">Machine Name (used in reports)</label>
+                <input 
+                    type="text" 
+                    id="machine_{{ worklist_id }}" 
+                    name="machine_{{ worklist_id }}" 
+                    value="{{ worklist_name }}"
+                    placeholder="Enter custom machine name"
+                >
+            </div>
+            {% endfor %}
+
+            <div class="btn-container">
+                <a href="/" class="btn-secondary" style="text-align: center; line-height: 48px; text-decoration: none;">
+                    ← Back
+                </a>
+                <button type="submit" class="btn-primary">
+                    Continue to Results →
+                </button>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
