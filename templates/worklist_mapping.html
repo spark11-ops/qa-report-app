@@ -224,7 +224,7 @@
             <p>Review the detected names below and customize them if needed.</p>
         </div>
 
-        <form method="POST">
+        <form method="POST" action="{{ url_for('worklist_mapping') }}">
             {% for worklist_id, worklist_name in worklists.items() %}
             <div class="worklist-item">
                 <div class="worklist-header">
