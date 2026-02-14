@@ -12,10 +12,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# PDF generation
-from docx2pdf import convert
+# PDF generation (using LibreOffice)
 import subprocess
-import platform
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-to-random-secret-key-in-production')
